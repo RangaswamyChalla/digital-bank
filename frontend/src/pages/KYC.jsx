@@ -22,7 +22,7 @@ const KYC = () => {
 
   const fetchKycStatus = async () => {
     try {
-      const response = await api.get('/api/kyc/status')
+      const response = await api.get('/kyc/status')
       setKycStatus(response.data)
     } catch (error) {
       console.error('Failed to fetch KYC status:', error)
@@ -42,7 +42,7 @@ const KYC = () => {
     setSubmitting(true)
 
     try {
-      await api.post('/api/kyc/submit', formData)
+      await api.post('/kyc/submit', formData)
       setSuccess('KYC application submitted successfully!')
       await refreshUser()
       await fetchKycStatus()

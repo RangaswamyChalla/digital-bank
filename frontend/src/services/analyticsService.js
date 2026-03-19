@@ -53,7 +53,7 @@ export const analyticsService = {
   // Get complete dashboard stats
   async getDashboardStats() {
     try {
-      const response = await api.get('/api/analytics/dashboard-stats')
+      const response = await api.get('/analytics/dashboard-stats')
       return response.data
     } catch (error) {
       console.error('Failed to fetch dashboard stats:', error)
@@ -109,7 +109,7 @@ export const analyticsService = {
 
   async getFraudStatistics() {
     try {
-      const response = await api.get('/api/fraud/statistics')
+      const response = await api.get('/fraud/statistics')
       return response.data
     } catch (error) {
       console.error('Failed to fetch fraud statistics:', error)

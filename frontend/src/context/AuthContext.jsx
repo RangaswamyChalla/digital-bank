@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
     // Tokens are stored in httpOnly cookies, browser sends them automatically
     const restoreSession = async () => {
       try {
-        const response = await api.get('/api/users/me', {
+        const response = await api.get('/users/me', {
           withCredentials: true
         })
         setUser(response.data)
@@ -36,12 +36,12 @@ export const AuthProvider = ({ children }) => {
   }, [])
 
   const login = async (email, password) => {
-    const response = await api.post('/api/auth/login', { email, password }, {
+    const response = await api.post('/auth/login', { email, password }, {
       withCredentials: true
     })
 
     // Tokens are now in httpOnly cookies, no need to store them here
-    const userResponse = await api.get('/api/users/me', {
+    const userResponse = await api.get('/users/me', {
       withCredentials: true
     })
     setUser(userResponse.data)
@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   const register = async (email, password, fullName, phone) => {
-    const response = await api.post('/api/auth/register', {
+    const response = await api.post('/auth/register', {
       email,
       password,
       full_name: fullName,
@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }) => {
     })
 
     // Tokens are now in httpOnly cookies
-    const userResponse = await api.get('/api/users/me', {
+    const userResponse = await api.get('/users/me', {
       withCredentials: true
     })
     setUser(userResponse.data)
@@ -72,7 +72,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await api.post('/api/auth/logout', {}, {
+      await api.post('/auth/logout', {}, {
         withCredentials: true
       })
     } catch (error) {
@@ -89,7 +89,7 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = async () => {
     try {
-      const response = await api.get('/api/users/me', {
+      const response = await api.get('/users/me', {
         withCredentials: true
       })
       setUser(response.data)

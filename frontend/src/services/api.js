@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: '',
+  baseURL: '/api/v1',
   headers: {
     'Content-Type': 'application/json'
   },
@@ -33,7 +33,7 @@ api.interceptors.response.use(
       try {
         // Refresh endpoint reads from httpOnly cookie automatically
         const response = await axios.post(
-          '/api/auth/refresh',
+          '/api/v1/auth/refresh',
           {},
           { withCredentials: true }
         )

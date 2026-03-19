@@ -12,7 +12,7 @@ const Transactions = () => {
 
   const fetchTransactions = async () => {
     try {
-      const response = await api.get('/api/transactions?limit=100')
+      const response = await api.get('/transactions?limit=100')
       let data = response.data
 
       if (filter !== 'all') {

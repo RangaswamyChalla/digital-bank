@@ -18,13 +18,13 @@ const Admin = () => {
     setLoading(true)
     try {
       if (activeTab === 'stats') {
-        const response = await api.get('/api/admin/stats')
+        const response = await api.get('/admin/stats')
         setStats(response.data)
       } else if (activeTab === 'users') {
-        const response = await api.get('/api/admin/users?limit=100')
+        const response = await api.get('/admin/users?limit=100')
         setUsers(response.data)
       } else if (activeTab === 'kyc') {
-        const response = await api.get('/api/kyc/admin/list')
+        const response = await api.get('/kyc/admin/list')
         setKycApplications(response.data)
       }
     } catch (error) {

@@ -16,9 +16,9 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const [balanceRes, accountsRes, transactionsRes] = await Promise.all([
-        api.get('/api/accounts/balance'),
-        api.get('/api/accounts'),
-        api.get('/api/transactions?limit=5')
+        api.get('/accounts/balance'),
+        api.get('/accounts'),
+        api.get('/transactions?limit=5')
       ])
 
       setTotalBalance(balanceRes.data.total_balance)

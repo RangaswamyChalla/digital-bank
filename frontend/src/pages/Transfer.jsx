@@ -23,7 +23,7 @@ const Transfer = () => {
 
   const fetchAccounts = async () => {
     try {
-      const response = await api.get('/api/accounts')
+      const response = await api.get('/accounts')
       setAccounts(response.data)
       if (response.data.length > 0) {
         setFormData(prev => ({ ...prev, from_account_id: response.data[0].id }))
@@ -58,7 +58,7 @@ const Transfer = () => {
     setError('')
 
     try {
-      await api.post('/api/transfers', {
+      await api.post('/transfers', {
         from_account_id: formData.from_account_id,
         to_account_number: formData.to_account_number,
         amount: parseFloat(formData.amount),

@@ -19,7 +19,7 @@ const Layout = () => {
 
   const fetchNotifications = async () => {
     try {
-      const response = await api.get('/api/notifications/unread-count')
+      const response = await api.get('/notifications/unread-count')
       setUnreadCount(response.data.unread_count)
     } catch (error) {
       console.error('Failed to fetch notification count:', error)
@@ -33,7 +33,7 @@ const Layout = () => {
 
   const fetchNotificationList = async () => {
     try {
-      const response = await api.get('/api/notifications?limit=10')
+      const response = await api.get('/notifications?limit=10')
       setNotifications(response.data)
     } catch (error) {
       console.error('Failed to fetch notifications:', error)
@@ -49,7 +49,7 @@ const Layout = () => {
 
   const markAllRead = async () => {
     try {
-      await api.put('/api/notifications/read-all')
+      await api.put('/notifications/read-all')
       setNotifications(notifications.map(n => ({ ...n, is_read: true })))
       setUnreadCount(0)
     } catch (error) {

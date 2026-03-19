@@ -19,7 +19,7 @@ const Accounts = () => {
 
   const fetchAccounts = async () => {
     try {
-      const response = await api.get('/api/accounts')
+      const response = await api.get('/accounts')
       setAccounts(response.data)
     } catch (error) {
       console.error('Failed to fetch accounts:', error)
@@ -35,7 +35,7 @@ const Accounts = () => {
     setCreating(true)
 
     try {
-      const response = await api.post('/api/accounts', {
+      const response = await api.post('/accounts', {
         account_type: formData.account_type,
         initial_deposit: parseFloat(formData.initial_deposit)
       })
