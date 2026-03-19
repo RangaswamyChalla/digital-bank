@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  # ===== POSTGRESQL DATABASE =====
+  db:
+    image: postgres:15
+    container_name: bank-db
+    environment:
+      POSTGRES_USER: ${DB_USER:-bankuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-bankpass}
+      POSTGRES_DB: ${DB_NAME:-bankdb}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-bankuser} -d ${DB_NAME:-bankdb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - banking-network
+    restart: unless-stopped
+
+  # ===== REDIS CACHE (Optional) =====
+  redis:
+    image: redis:7-alpine
+    container_name: bank-redis
+    ports:
+      - "6379:6379"
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - banking-network
+    restart: unless-stopped
+    profiles:
+      - with-cache
+
+  # ===== FASTAPI BACKEND =====
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        PYTHON_VERSION: 3.13
+    container_name: bank-backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Database
+      DB_URL: postgresql+asyncpg://${DB_USER:-bankuser}:${DB_PASSWORD:-bankpass}@db:5432/${DB_NAME:-bankdb}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-20}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-40}
+      
+      # JWT/Auth
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-super-secret-key-change-in-production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      
+      # Redis (if enabled)
+      REDIS_ENABLED: ${REDIS_ENABLED:-false}
+      REDIS_URL: redis://redis:6379/0
+      
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      
+      # Environment
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: ${DEBUG:-false}
+      
+      # CORS
+      SECURITY_CORS_ORIGINS: ${SECURITY_CORS_ORIGINS:-http://frontend:5173}
+      
+      # AI Services
+      AI_ENABLED: ${AI_ENABLED:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    networks:
+      - banking-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===== REACT FRONTEND =====
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NODE_VERSION: 20
+    container_name: bank-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://backend:8000}
+      VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:8000}
+      NODE_ENV: ${ENVIRONMENT:-production}
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - banking-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5173"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# ===== NETWORKS =====
+networks:
+  banking-network:
+    driver: bridge
+
+# ===== VOLUMES =====
+volumes:
+  postgres_data:
+  redis_data:
