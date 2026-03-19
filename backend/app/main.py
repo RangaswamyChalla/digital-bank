@@ -103,37 +103,19 @@ otel_enabled = setup_opentelemetry()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifecycle management"""
-    # STARTUP
     logger.info("Application starting up")
     await init_db()
     logger.info("Database initialized")
 
-    # Import and initialize service hub after app is fully configured
-    from app.services.integration_hub import initialize_service_hub_async
-    await initialize_service_hub_async(settings.REDIS_URL)
-    logger.info("Service integration hub initialized with Redis pub/sub")
-
     yield
 
-    # SHUTDOWN
     logger.info("Application shutting down")
-
-    # Clean up Redis connections
-    from app.services.integration_hub import get_service_hub
-    hub = get_service_hub()
-    if hub._redis_bus:
-        await hub._redis_bus.disconnect()
-        logger.info("Redis connections closed")
-
-    # Close job pool
-    from app.background_tasks import close_job_pool
-    await close_job_pool()
-    logger.info("Job pool closed")
-
-    # Close database engine
-    from app.database import engine
-    await engine.dispose()
-    logger.info("Database connections closed")
+    try:
+        from app.database import engine
+        await engine.dispose()
+        logger.info("Database connections closed")
+    except Exception as e:
+        logger.error(f"Error during shutdown: {e}")
 
 
 # ===== CREATE FASTAPI APP =====
@@ -400,9 +382,10 @@ async def system_status():
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """Fallback global exception handler (for non-BankingException errors)"""
-    logger.exception(f"Unhandled exception: {type(exc).__name__}")
-    
-    import uuid
+    import traceback
+    print(f"[ERROR] Unhandled exception: {type(exc).__name__}", flush=True)
+    print(traceback.format_exc(), flush=True)
+
     request_id = str(uuid.uuid4())
     
     return JSONResponse(

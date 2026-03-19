@@ -20,17 +20,16 @@ try:
     cursor = conn.cursor()
 
     # Check if admin already exists
-    cursor.execute("SELECT * FROM user WHERE email = ?", (admin_email,))
+    cursor.execute("SELECT * FROM users WHERE email = ?", (admin_email,))
     existing = cursor.fetchone()
 
     if existing:
-        print(f"✅ Admin user already exists: {admin_email}")
-        print(f"📧 Email: {admin_email}")
+        print("[OK] Admin user already exists:", admin_email)
     else:
         # Create admin user
         admin_id = str(uuid.uuid4())
         cursor.execute("""
-            INSERT INTO user (id, email, password_hash, full_name, phone, role, kyc_level, kyc_status, is_active, created_at)
+            INSERT INTO users (id, email, password_hash, full_name, phone, role, kyc_level, kyc_status, is_active, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
         """, (
             admin_id,
@@ -43,16 +42,17 @@ try:
             "approved",
             True
         ))
-        
+
         conn.commit()
-        print("✅ Admin user created successfully!")
-        print(f"\n📋 ADMIN CREDENTIALS:")
-        print(f"  📧 Email:    {admin_email}")
-        print(f"  🔐 Password: Admin@123456")
-        print(f"  👤 Role:     admin")
-        print(f"  📊 KYC:      Level 3 (Approved)")
+        print("[OK] Admin user created successfully!")
+        print("")
+        print("ADMIN CREDENTIALS:")
+        print("  Email:    ", admin_email)
+        print("  Password: Admin@123456")
+        print("  Role:     admin")
+        print("  KYC:      Level 3 (Approved)")
 except Exception as e:
-    print(f"❌ Error: {e}")
+    print("[ERROR]", e)
 finally:
     if 'conn' in locals():
         conn.close()

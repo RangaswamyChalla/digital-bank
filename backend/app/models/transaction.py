@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Numeric, DateTime, ForeignKey, Text, Index
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -9,9 +8,9 @@ from app.database import Base
 class Transaction(Base):
     __tablename__ = "transactions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    from_account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True, index=True)
-    to_account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    from_account_id = Column(String(36), ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True, index=True)
+    to_account_id = Column(String(36), ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True, index=True)
     from_account_number = Column(String(10), nullable=False, index=True)
     to_account_number = Column(String(10), nullable=False, index=True)
     amount = Column(Numeric(15, 2), nullable=False)

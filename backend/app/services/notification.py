@@ -11,7 +11,7 @@ class NotificationService:
     @staticmethod
     async def create_notification(
         db: AsyncSession,
-        user_id: uuid.UUID,
+        user_id: str,
         notification_type: str,
         title: str,
         message: str
@@ -30,7 +30,7 @@ class NotificationService:
     @staticmethod
     async def get_user_notifications(
         db: AsyncSession,
-        user_id: uuid.UUID,
+        user_id: str,
         limit: int = 50,
         unread_only: bool = False
     ) -> List[Notification]:
@@ -44,7 +44,7 @@ class NotificationService:
         return result.scalars().all()
 
     @staticmethod
-    async def get_unread_count(db: AsyncSession, user_id: uuid.UUID) -> int:
+    async def get_unread_count(db: AsyncSession, user_id: str) -> int:
         result = await db.execute(
             select(Notification).where(
                 Notification.user_id == user_id,
@@ -54,7 +54,7 @@ class NotificationService:
         return len(result.scalars().all())
 
     @staticmethod
-    async def mark_as_read(db: AsyncSession, user_id: uuid.UUID, notification_id: uuid.UUID):
+    async def mark_as_read(db: AsyncSession, user_id: str, notification_id: str):
         result = await db.execute(
             select(Notification).where(
                 Notification.id == notification_id,
@@ -70,7 +70,7 @@ class NotificationService:
         await db.commit()
 
     @staticmethod
-    async def mark_all_as_read(db: AsyncSession, user_id: uuid.UUID):
+    async def mark_all_as_read(db: AsyncSession, user_id: str):
         await db.execute(
             update(Notification).where(
                 Notification.user_id == user_id,

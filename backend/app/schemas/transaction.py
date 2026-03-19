@@ -2,11 +2,10 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from decimal import Decimal
 from datetime import datetime
-from uuid import UUID
 
 
 class TransferRequest(BaseModel):
-    from_account_id: UUID
+    from_account_id: str
     to_account_number: str = Field(..., min_length=10, max_length=10)
     amount: Decimal = Field(..., gt=0)
     transfer_type: str = Field(..., description="internal, external")
@@ -21,8 +20,8 @@ class TransactionBase(BaseModel):
 
 
 class TransactionCreate(TransactionBase):
-    from_account_id: Optional[UUID] = None
-    to_account_id: Optional[UUID] = None
+    from_account_id: Optional[str] = None
+    to_account_id: Optional[str] = None
     from_account_number: str
     to_account_number: str
     reference: Optional[str] = None
@@ -30,7 +29,7 @@ class TransactionCreate(TransactionBase):
 
 
 class TransactionResponse(BaseModel):
-    id: UUID
+    id: str
     from_account_number: Optional[str]
     to_account_number: Optional[str]
     amount: Decimal

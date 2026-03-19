@@ -11,8 +11,6 @@ from app.services.auth import AuthService
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
-# Dependency to get current user
-
 
 async def get_current_user(
     db: AsyncSession = Depends(get_db),
@@ -40,7 +38,7 @@ async def get_current_user(
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
     if not user:

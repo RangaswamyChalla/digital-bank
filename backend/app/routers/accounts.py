@@ -30,7 +30,14 @@ async def get_accounts(
     current_user: User = Depends(get_current_user)
 ):
     """Get all accounts for current user"""
-    return await AccountService.get_user_accounts(db, current_user.id)
+    import traceback
+    try:
+        accounts = await AccountService.get_user_accounts(db, current_user.id)
+        return accounts
+    except Exception as e:
+        print(f"[ERROR in get_accounts] {type(e).__name__}: {e}", flush=True)
+        print(traceback.format_exc(), flush=True)
+        raise
 
 
 @router.get("/balance")
@@ -50,10 +57,9 @@ async def get_account(
     current_user: User = Depends(get_current_user)
 ):
     """Get account details by ID"""
-    from uuid import UUID
     account = await AccountService.get_account_by_id(
         db,
-        UUID(account_id),
+        account_id,
         current_user.id
     )
     return account
@@ -68,10 +74,9 @@ async def get_account_transactions(
     current_user: User = Depends(get_current_user)
 ):
     """Get transactions for a specific account"""
-    from uuid import UUID
     return await TransactionService.get_account_transactions(
         db,
-        UUID(account_id),
+        account_id,
         limit,
         offset
     )

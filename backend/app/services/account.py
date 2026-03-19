@@ -19,7 +19,7 @@ class AccountService:
         return ''.join([str(random.randint(0, 9)) for _ in range(10)])
 
     @staticmethod
-    async def create_account(db: AsyncSession, user_id: uuid.UUID, account_data: AccountCreate) -> Account:
+    async def create_account(db: AsyncSession, user_id: str, account_data: AccountCreate) -> Account:
         # Verify user exists and KYC is at least level 1
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
@@ -66,14 +66,14 @@ class AccountService:
         return account
 
     @staticmethod
-    async def get_user_accounts(db: AsyncSession, user_id: uuid.UUID) -> List[Account]:
+    async def get_user_accounts(db: AsyncSession, user_id: str) -> List[Account]:
         result = await db.execute(
             select(Account).where(Account.user_id == user_id)
         )
         return result.scalars().all()
 
     @staticmethod
-    async def get_account_by_id(db: AsyncSession, account_id: uuid.UUID, user_id: uuid.UUID = None) -> Account:
+    async def get_account_by_id(db: AsyncSession, account_id: str, user_id: str = None) -> Account:
         query = select(Account).where(Account.id == account_id)
         if user_id:
             query = query.where(Account.user_id == user_id)
@@ -92,7 +92,7 @@ class AccountService:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def get_total_balance(db: AsyncSession, user_id: uuid.UUID) -> Decimal:
+    async def get_total_balance(db: AsyncSession, user_id: str) -> Decimal:
         result = await db.execute(
             select(Account).where(Account.user_id == user_id, Account.status == "active")
         )

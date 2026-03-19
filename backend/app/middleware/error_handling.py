@@ -203,6 +203,9 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             )
 
         except ValueError as exc:
+            import traceback
+            print(f"[DEBUG ValueError] {exc}", flush=True)
+            print(traceback.format_exc(), flush=True)
             error_response = ErrorResponse(
                 code="VALIDATION_ERROR",
                 message=str(exc),
@@ -214,6 +217,9 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             )
 
         except Exception as exc:
+            import traceback
+            print(f"[DEBUG Exception] {type(exc).__name__}: {exc}", flush=True)
+            print(traceback.format_exc(), flush=True)
             request_id = getattr(request.state, "request_id", "unknown")
             self.logger.exception(f"Unhandled exception in request {request_id}")
 

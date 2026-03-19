@@ -209,7 +209,7 @@ class FraudDetectionService:
 
             # Get user's account IDs
             result = await db.execute(
-                select(Account.id).where(Account.user_id == uuid.UUID(request.user_id))
+                select(Account.id).where(Account.user_id == request.user_id)
             )
             user_account_ids = [row[0] for row in result.all()]
 
@@ -218,7 +218,7 @@ class FraudDetectionService:
 
             # Get user info
             result = await db.execute(
-                select(User).where(User.id == uuid.UUID(request.user_id))
+                select(User).where(User.id == request.user_id)
             )
             user = result.scalar_one_or_none()
             if not user:
@@ -403,7 +403,7 @@ class FraudDetectionService:
         one_hour_ago = datetime.utcnow() - timedelta(hours=1)
 
         result = await db.execute(
-            select(Account.id).where(Account.user_id == uuid.UUID(user_id))
+            select(Account.id).where(Account.user_id == user_id)
         )
         user_account_ids = [row[0] for row in result.all()]
 
@@ -442,7 +442,7 @@ class FraudDetectionService:
             return 0
 
         result = await db.execute(
-            select(Account.id).where(Account.user_id == uuid.UUID(user_id))
+            select(Account.id).where(Account.user_id == user_id)
         )
         user_account_ids = [row[0] for row in result.all()]
 
@@ -479,7 +479,7 @@ class FraudDetectionService:
         one_day_ago = datetime.utcnow() - timedelta(hours=24)
 
         result = await db.execute(
-            select(Account.id).where(Account.user_id == uuid.UUID(user_id))
+            select(Account.id).where(Account.user_id == user_id)
         )
         user_account_ids = [row[0] for row in result.all()]
 
@@ -555,7 +555,7 @@ class FraudDetectionService:
         """Get user's fraud risk profile"""
         from app.models.account import Account
         result = await db.execute(
-            select(User).where(User.id == uuid.UUID(user_id))
+            select(User).where(User.id == user_id)
         )
         user = result.scalar_one_or_none()
 
@@ -563,7 +563,7 @@ class FraudDetectionService:
             return {"user_id": user_id, "status": "not_found"}
 
         result = await db.execute(
-            select(Account.id).where(Account.user_id == uuid.UUID(user_id))
+            select(Account.id).where(Account.user_id == user_id)
         )
         user_account_ids = [row[0] for row in result.all()]
 

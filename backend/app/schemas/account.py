@@ -2,7 +2,6 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from decimal import Decimal
 from datetime import datetime
-from uuid import UUID
 
 
 class AccountBase(BaseModel):
@@ -15,14 +14,14 @@ class AccountCreate(AccountBase):
 
 
 class AccountResponse(BaseModel):
-    id: UUID
+    id: str
     account_number: str
     account_type: str
     balance: Decimal
-    currency: str
+    currency: Optional[str] = "USD"
     status: str
     created_at: datetime
-    user_id: UUID
+    user_id: str
 
     class Config:
         from_attributes = True

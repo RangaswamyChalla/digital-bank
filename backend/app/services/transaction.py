@@ -20,7 +20,7 @@ class TransactionService:
     @staticmethod
     async def create_transfer(
         db: AsyncSession,
-        user_id: uuid.UUID,
+        user_id: str,
         transfer_data: TransferRequest
     ) -> Transaction:
         # Get source account with row-level lock to prevent double-spending
@@ -154,7 +154,7 @@ class TransactionService:
     @staticmethod
     async def get_user_transactions(
         db: AsyncSession,
-        user_id: uuid.UUID,
+        user_id: str,
         limit: int = 50,
         offset: int = 0
     ) -> List[Transaction]:
@@ -181,7 +181,7 @@ class TransactionService:
     @staticmethod
     async def get_account_transactions(
         db: AsyncSession,
-        account_id: uuid.UUID,
+        account_id: str,
         limit: int = 50,
         offset: int = 0
     ) -> List[Transaction]:
@@ -204,8 +204,8 @@ class TransactionService:
     @staticmethod
     async def get_transaction_by_id(
         db: AsyncSession,
-        transaction_id: uuid.UUID,
-        user_id: uuid.UUID = None
+        transaction_id: str,
+        user_id: str = None
     ) -> Transaction:
         query = select(Transaction).where(Transaction.id == transaction_id)
         result = await db.execute(query)

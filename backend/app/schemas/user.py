@@ -1,7 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
-from uuid import UUID
 
 
 class UserBase(BaseModel):
@@ -27,7 +26,7 @@ class KYCSubmit(BaseModel):
 
 
 class UserResponse(BaseModel):
-    id: UUID
+    id: str
     email: str
     full_name: str
     phone: Optional[str]

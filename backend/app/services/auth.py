@@ -152,7 +152,7 @@ class AuthService:
         result = await db.execute(
             select(RefreshToken).where(
                 RefreshToken.token == refresh_token,
-                RefreshToken.user_id == uuid.UUID(user_id)
+                RefreshToken.user_id == user_id
             )
         )
         stored_token = result.scalar_one_or_none()
@@ -164,7 +164,7 @@ class AuthService:
             )
 
         # Get user
-        result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+        result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
 
         if not user or not user.is_active:
