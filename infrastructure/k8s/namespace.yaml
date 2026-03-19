@@ -1,0 +1,38 @@
+# Digital Bank Kubernetes Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: digital-bank
+  labels:
+    app: digital-bank
+    environment: production
+---
+# ConfigMap for Backend
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: digital-bank-backend-config
+  namespace: digital-bank
+data:
+  ENVIRONMENT: "production"
+  API_V1_PREFIX: "/api"
+  LOG_LEVEL: "INFO"
+  # Redis URL is discovered via Kubernetes DNS
+  REDIS_URL: "redis://digital-bank-redis:6379"
+  DATABASE_REPLICA_URL: ""
+---
+# Secret for Backend (use external secrets in production)
+# In production, use External Secrets Operator or Sealed Secrets
+apiVersion: v1
+kind: Secret
+metadata:
+  name: digital-bank-backend-secrets
+  namespace: digital-bank
+type: Opaque
+stringData:
+  # IMPORTANT: In production, use a proper secrets manager
+  # These are example values - replace with real secrets
+  SECRET_KEY: "REPLACE_WITH_REAL_SECRET_KEY"
+  DATABASE_URL: "postgresql://bankuser:bankpass@digital-bank-postgres:5432/bankdb"
+  SENTRY_DSN: ""
+  OTLP_ENDPOINT: ""

@@ -7,6 +7,7 @@ from app.models.user import User
 from app.schemas.transaction import TransferRequest, TransactionResponse
 from app.services.transaction import TransactionService
 from app.routers.users import get_current_user
+from app.dependencies.rate_limit import rate_limit_dependency
 
 router = APIRouter(prefix="/transfers", tags=["Transfers"])
 
@@ -15,7 +16,8 @@ router = APIRouter(prefix="/transfers", tags=["Transfers"])
 async def create_transfer(
     transfer_data: TransferRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(rate_limit_dependency)
 ):
     """Transfer money to another account"""
     return await TransactionService.create_transfer(db, current_user.id, transfer_data)

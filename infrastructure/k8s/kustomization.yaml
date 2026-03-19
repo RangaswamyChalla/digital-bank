@@ -1,0 +1,29 @@
+# Kustomize configuration for Digital Bank
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: digital-bank
+
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - redis.yaml
+  - backend.yaml
+  - worker.yaml
+
+commonLabels:
+  app: digital-bank
+  managed by: kustomize
+
+configMapGenerator:
+  - name: digital-bank-config
+    literals:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+
+secretGenerator:
+  - name: digital-bank-secrets
+    type: Opaque
+    literals:
+      - SECRET_KEY=REPLACE_WITH_REAL_SECRET
+      - DATABASE_URL=postgresql://user:pass@postgres:5432/bankdb

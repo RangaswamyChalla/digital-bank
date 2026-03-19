@@ -73,3 +73,18 @@ async def update_current_user(
     await db.commit()
     await db.refresh(current_user)
     return current_user
+
+
+@router.get("/me/rate-limit-status")
+async def get_rate_limit_status(
+    current_user: User = Depends(get_current_user)
+):
+    """Get current user's rate limit status"""
+    from app.middleware.per_user_rate_limit import get_current_user_rate_limit_status
+
+    usage = await get_current_user_rate_limit_status(str(current_user.id))
+
+    return {
+        "user_id": str(current_user.id),
+        "rate_limits": usage
+    }

@@ -45,7 +45,7 @@ const Transfer = () => {
     e.preventDefault()
     setError('')
 
-    if (selectedAccount && parseFloat(formData.amount) > parseFloat(selectedAccount.balance)) {
+    if (selectedAccount && Number(formData.amount) > Number(selectedAccount.balance)) {
       setError('Insufficient balance')
       return
     }

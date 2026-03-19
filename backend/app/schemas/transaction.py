@@ -32,7 +32,7 @@ class TransactionCreate(TransactionBase):
 class TransactionResponse(BaseModel):
     id: UUID
     from_account_number: Optional[str]
-    to_account_number: str
+    to_account_number: Optional[str]
     amount: Decimal
     currency: str
     transaction_type: str

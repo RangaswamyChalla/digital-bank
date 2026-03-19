@@ -3,7 +3,7 @@ from decimal import Decimal
 from datetime import datetime
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, func, case
 from fastapi import HTTPException, status
 
 from app.models.transaction import Transaction
@@ -54,17 +54,22 @@ class TransactionService:
             if not to_account:
                 raise HTTPException(status_code=404, detail="Destination account not found")
 
-        # Check daily limit using aggregate query (atomic)
+        # Check daily limit using atomic SUM aggregate (within locked transaction)
         today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         result = await db.execute(
-            select(Transaction).where(
+            select(
+                func.coalesce(func.sum(
+                    case(
+                        (Transaction.status == "completed", Transaction.amount),
+                        else_=0
+                    )
+                ), 0)
+            ).where(
                 Transaction.from_account_id == from_account.id,
-                Transaction.created_at >= today_start,
-                Transaction.status == "completed"
+                Transaction.created_at >= today_start
             )
         )
-        today_transfers = result.scalars().all()
-        today_total = sum(t.amount for t in today_transfers)
+        today_total = result.scalar() or Decimal("0")
 
         if today_total + transfer_data.amount > TransactionService.DAILY_LIMIT:
             raise HTTPException(
@@ -180,7 +185,7 @@ class TransactionService:
         limit: int = 50,
         offset: int = 0
     ) -> List[Transaction]:
-        result = await db.execute(select(Account).where(Account.id == account_id))
+        result = await db.execute(select(Transaction).where(Transaction.id == account_id))
         account = result.scalar_one_or_none()
 
         if not account:
@@ -208,5 +213,17 @@ class TransactionService:
 
         if not transaction:
             raise HTTPException(status_code=404, detail="Transaction not found")
+
+        # Verify user has access to this transaction
+        if user_id:
+            # Get user's account numbers
+            result = await db.execute(
+                select(Account.account_number).where(Account.user_id == user_id)
+            )
+            user_account_numbers = [row[0] for row in result.all()]
+
+            # Check if transaction involves user's accounts
+            if transaction.from_account_number not in user_account_numbers and transaction.to_account_number not in user_account_numbers:
+                raise HTTPException(status_code=403, detail="Access denied")
 
         return transaction

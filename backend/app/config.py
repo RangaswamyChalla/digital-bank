@@ -13,6 +13,34 @@ class Settings(BaseSettings):
     # Database - use SQLite for local dev
     DATABASE_URL: str = "sqlite+aiosqlite:///./bank.db"
 
+    # Database Pool Settings (for PostgreSQL)
+    DATABASE_POOL_SIZE: int = 20
+    DATABASE_MAX_OVERFLOW: int = 10
+    DATABASE_POOL_TIMEOUT: int = 30
+    DATABASE_POOL_RECYCLE: int = 3600
+
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379"
+
+    # ARQ Worker
+    ARQ_REDIS_URL: str = "redis://localhost:6379"
+
+    # Per-User Rate Limiting
+    USER_RATE_LIMIT_PER_MINUTE: int = 120
+    USER_RATE_LIMIT_PER_HOUR: int = 1000
+    USER_RATE_LIMIT_PER_DAY: int = 5000
+
+    # Database Read Replica (for analytics)
+    DATABASE_REPLICA_URL: str = ""
+
+    # Secrets Backend
+    SECRETS_BACKEND: str = "env"  # Options: env, vault, aws_secrets
+    VAULT_URL: str = "http://localhost:8200"
+    VAULT_TOKEN: str = ""
+    VAULT_PATH: str = "digital-bank"
+    AWS_REGION: str = "us-east-1"
+    AWS_SECRET_NAME: str = "digital-bank/secrets"
+
     # JWT
     SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
@@ -29,6 +57,11 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT == "production"
+
+    @property
+    def use_secrets_manager(self) -> bool:
+        """Check if secrets manager should be used."""
+        return self.SECRETS_BACKEND != "env" and self.ENVIRONMENT == "production"
 
     class Config:
         env_file = ".env"

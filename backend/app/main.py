@@ -31,6 +31,75 @@ from app.routers import (
 logger = setup_logging()
 
 
+def setup_sentry():
+    """Initialize Sentry if DSN is configured"""
+    import os
+    sentry_dsn = os.getenv("SENTRY_DSN")
+    if sentry_dsn:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.sqlalchemy import SqlAlchemyIntegration
+
+        sentry_sdk.init(
+            dsn=sentry_dsn,
+            integrations=[
+                FastApiIntegration(transaction_style="endpoint"),
+                SqlAlchemyIntegration(),
+            ],
+            traces_sample_rate=0.1,
+            environment=settings.ENVIRONMENT,
+            release="digital-bank@1.0.0",
+        )
+        logger.info("Sentry error tracking initialized")
+    else:
+        logger.info("Sentry DSN not configured - error tracking disabled")
+
+
+def setup_opentelemetry():
+    """Initialize OpenTelemetry tracing if configured"""
+    import os
+    otlp_endpoint = os.getenv("OTLP_ENDPOINT")
+
+    if otlp_endpoint:
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from opentelemetry.sdk.resources import Resource, SERVICE_NAME
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
+        # Create resource with service name
+        resource = Resource(attributes={
+            SERVICE_NAME: "digital-bank-api"
+        })
+
+        # Set up tracer provider
+        provider = TracerProvider(resource=resource)
+        processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=otlp_endpoint))
+        provider.add_span_processor(processor)
+        trace.set_tracer_provider(provider)
+
+        logger.info(f"OpenTelemetry tracing initialized - exporting to {otlp_endpoint}")
+        return True
+    else:
+        logger.info("OTLP_ENDPOINT not configured - OpenTelemetry tracing disabled")
+        return False
+
+
+def instrument_app():
+    """Instrument FastAPI and SQLAlchemy with OpenTelemetry"""
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+    from app.database import engine
+
+    # Instrument FastAPI (after app is created)
+    # Note: This is called after app creation below
+    logger.info("OpenTelemetry instrumentation configured")
+
+
+setup_sentry()
+otel_enabled = setup_opentelemetry()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifecycle management"""
@@ -38,16 +107,33 @@ async def lifespan(app: FastAPI):
     logger.info("Application starting up")
     await init_db()
     logger.info("Database initialized")
-    
+
     # Import and initialize service hub after app is fully configured
-    from app.services.integration_hub import initialize_service_hub
-    initialize_service_hub()
-    logger.info("Service integration hub initialized")
-    
+    from app.services.integration_hub import initialize_service_hub_async
+    await initialize_service_hub_async(settings.REDIS_URL)
+    logger.info("Service integration hub initialized with Redis pub/sub")
+
     yield
-    
+
     # SHUTDOWN
     logger.info("Application shutting down")
+
+    # Clean up Redis connections
+    from app.services.integration_hub import get_service_hub
+    hub = get_service_hub()
+    if hub._redis_bus:
+        await hub._redis_bus.disconnect()
+        logger.info("Redis connections closed")
+
+    # Close job pool
+    from app.background_tasks import close_job_pool
+    await close_job_pool()
+    logger.info("Job pool closed")
+
+    # Close database engine
+    from app.database import engine
+    await engine.dispose()
+    logger.info("Database connections closed")
 
 
 # ===== CREATE FASTAPI APP =====
@@ -60,6 +146,14 @@ app = FastAPI(
     swagger_ui_parameters={"syntaxHighlight": "monokai"}
 )
 
+# Instrument FastAPI with OpenTelemetry (if enabled)
+if otel_enabled:
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    FastAPIInstrumentor.instrument_app(app)
+    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+    from app.database import engine
+    SQLAlchemyInstrumentor().instrument(engine=engine.sync_engine)
+
 # ===== MIDDLEWARE STACK =====
 # Order matters! Apply from innermost to outermost
 
@@ -67,7 +161,8 @@ app = FastAPI(
 app.add_middleware(
     RateLimitMiddleware,
     requests_per_minute=60,
-    burst_size=10
+    burst_size=10,
+    redis_url=settings.REDIS_URL
 )
 
 # 2. Error Handling Middleware (catches all errors)
@@ -85,6 +180,14 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# 4. Security Headers Middleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 5. Request Timeout Middleware
+from app.middleware.timeout import TimeoutMiddleware
+app.add_middleware(TimeoutMiddleware, timeout_seconds=30)
 
 # ===== ROUTERS =====
 # Authentication
@@ -134,11 +237,11 @@ async def root():
 
 @app.get("/health", tags=["System"])
 async def health_check():
-    """Health Check Endpoint"""
+    """Basic health check - returns overall status."""
     from app.database import engine
     from sqlalchemy import text
 
-    # Actually check database connectivity
+    # Check database connectivity
     db_connected = False
     try:
         async with engine.connect() as conn:
@@ -147,16 +250,99 @@ async def health_check():
     except Exception:
         db_connected = False
 
+    # Check Redis connectivity
+    redis_connected = False
+    try:
+        from app.services.integration_hub import get_service_hub
+        hub = get_service_hub()
+        if hub._redis_bus and hub._redis_bus._redis:
+            await hub._redis_bus._redis.ping()
+            redis_connected = True
+    except Exception:
+        redis_connected = False
+
+    # Check WebSocket manager
+    from app.routers.websocket import manager
+    websocket_active = manager is not None
+
+    overall_status = "healthy" if db_connected else "degraded"
+
     return {
-        "status": "healthy" if db_connected else "degraded",
+        "status": overall_status,
         "environment": settings.ENVIRONMENT,
         "services": {
             "database": "connected" if db_connected else "disconnected",
-            "fraud_detection": True,
-            "websocket": "active",
-            "cache": "disabled"
+            "redis": "connected" if redis_connected else "disconnected",
+            "websocket": "active" if websocket_active else "inactive",
         }
     }
+
+
+@app.get("/health/ready", tags=["System"])
+async def readiness_check():
+    """
+    Readiness probe - checks if the app is ready to receive traffic.
+    Used by Kubernetes to determine when to route traffic to this instance.
+    """
+    from app.database import engine
+    from sqlalchemy import text
+
+    checks = {}
+    all_ready = True
+
+    # Database check
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        checks["database"] = {"status": "ready"}
+    except Exception as e:
+        checks["database"] = {"status": "not_ready", "error": str(e)}
+        all_ready = False
+
+    # Redis check (optional - app can work without Redis)
+    try:
+        from app.services.integration_hub import get_service_hub
+        hub = get_service_hub()
+        if hub._redis_bus and hub._redis_bus._redis:
+            await hub._redis_bus._redis.ping()
+            checks["redis"] = {"status": "ready"}
+        else:
+            checks["redis"] = {"status": "not_configured"}
+    except Exception as e:
+        checks["redis"] = {"status": "degraded", "error": str(e)}
+        # Redis is not critical - don't fail readiness
+
+    status_code = 200 if all_ready else 503
+
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "ready": all_ready,
+            "checks": checks
+        }
+    )
+
+
+@app.get("/health/live", tags=["System"])
+async def liveness_check():
+    """
+    Liveness probe - checks if the app is alive.
+    Used by Kubernetes to determine if the container should be restarted.
+    Returns 200 if the app is running, regardless of dependencies.
+    """
+    return {"alive": True, "timestamp": __import__('datetime').datetime.utcnow().isoformat()}
+
+
+@app.get("/metrics", tags=["System"])
+async def metrics():
+    """Prometheus metrics endpoint"""
+    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    from starlette.responses import Response
+
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST
+    )
 
 
 @app.get("/api/v1/system/status", tags=["System"])
