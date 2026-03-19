@@ -10,46 +10,69 @@ A modern, full-stack digital banking application built with FastAPI and React. S
 
 ---
 
-## ✨ Features
+## Features
 
-### 🏦 Banking Operations
+### Banking Operations
 - **Account Management** — Create and manage multiple account types (Savings, Checking, Business)
 - **Instant Transfers** — Send money between accounts with real-time processing
 - **Transaction History** — Complete audit trail with filtering and search
 - **Balance Tracking** — Real-time balance updates and account monitoring
 
-### 🔐 Security
-- **JWT Authentication** — Secure token-based authentication
+### Security
+- **JWT Authentication** — Secure token-based authentication with access/refresh tokens
 - **Password Hashing** — Argon2 encryption for password security
-- **Rate Limiting** — Protection against brute force attacks
+- **Rate Limiting** — Protection against brute force attacks (Redis-backed)
 - **RBAC** — Role-based access control for admin/users
+- **Security Headers** — CSP, HSTS, X-Frame-Options middleware
 
-### 📋 KYC Verification
+### KYC Verification
 - **Identity Verification** — Document upload and verification workflow
 - **Status Tracking** — Real-time KYC application status
 - **Admin Approval** — Admin dashboard for verification decisions
 
-### 📊 Admin Dashboard
+### ML-Powered Fraud Detection
+- **XGBoost ML Model** — Real-time transaction fraud scoring
+- **Rule-Based Detection** — Configurable fraud rules engine
+- **Alert Management** — Suspicious activity monitoring and alerts
+- **Model Retraining** — Background ML model retraining pipeline
+
+### Admin Dashboard
 - **User Management** — View and manage all users
 - **Analytics** — Transaction volume, user growth, and fraud detection
 - **Fraud Alerts** — Real-time suspicious activity monitoring
 - **System Statistics** — Comprehensive dashboard metrics
+- **Audit Logs** — Complete action history tracking
 
-### 🔔 Notifications
-- **Real-time Alerts** — WebSocket-powered instant notifications
+### Real-time Features
+- **WebSocket Notifications** — Instant in-app notifications
 - **Transaction Updates** — Immediate alerts for all account activity
+- **Live Dashboard** — Real-time metrics updates
+
+### Observability
+- **OpenTelemetry** — Distributed tracing support
+- **Sentry** — Error tracking and monitoring
+- **Prometheus Metrics** — `/metrics` endpoint for monitoring
+- **Structured Logging** — JSON-formatted logs
+
+### Background Processing
+- **ARQ** — Async job queue for heavy tasks
+- **Scheduled Tasks** — ML model retraining, report generation
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Backend
 - **FastAPI** — High-performance Python web framework
-- **SQLAlchemy** — SQL toolkit and ORM
-- **Pydantic** — Data validation
+- **SQLAlchemy 2.0** — SQL toolkit and ORM (async)
+- **Pydantic v2** — Data validation
 - **Uvicorn** — ASGI server
-- **JWT** — JSON Web Tokens
+- **JWT (python-jose)** — JSON Web Tokens
 - **Argon2** — Password hashing
+- **Redis** — Caching, rate limiting, pub/sub
+- **XGBoost + Scikit-learn** — ML fraud detection
+- **Alembic** — Database migrations
+- **ARQ** — Background job processing
 
 ### Frontend
 - **React 18** — Modern UI library
@@ -59,14 +82,21 @@ A modern, full-stack digital banking application built with FastAPI and React. S
 - **Recharts** — Data visualization
 - **WebSocket** — Real-time communication
 
+### Infrastructure
+- **Docker & Docker Compose** — Containerization
+- **PostgreSQL** — Primary database
+- **Redis** — Cache and message broker
+
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
 - npm or yarn
+- Redis (optional, for rate limiting)
+- PostgreSQL (optional, SQLite default for dev)
 
 ### Backend Setup
 
@@ -82,9 +112,11 @@ venv\Scripts\activate     # Windows
 # Install dependencies
 pip install -r requirements.txt
 
-# Run the server
+# Run the server (uses SQLite by default)
 python run.py
 ```
+
+The API will be available at http://localhost:8000
 
 ### Frontend Setup
 
@@ -98,6 +130,8 @@ npm install
 npm run dev
 ```
 
+The frontend will be available at http://localhost:5173
+
 ### Using Docker
 
 ```bash
@@ -107,124 +141,188 @@ docker-compose up --build
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 digital-bank/
 ├── backend/
 │   ├── app/
-│   │   ├── models/        # SQLAlchemy models
-│   │   ├── routers/       # API endpoints
-│   │   ├── schemas/       # Pydantic schemas
-│   │   ├── services/     # Business logic
-│   │   ├── middleware/    # Custom middleware
-│   │   └── main.py        # Application entry
+│   │   ├── models/          # SQLAlchemy models
+│   │   ├── routers/        # API endpoints
+│   │   ├── schemas/        # Pydantic schemas
+│   │   ├── services/       # Business logic
+│   │   ├── middleware/     # Custom middleware
+│   │   ├── ml/             # ML models and features
+│   │   ├── background_tasks/ # ARQ job handlers
+│   │   └── main.py         # Application entry
+│   ├── alembic/            # Database migrations
+│   ├── training/           # ML training scripts
 │   ├── requirements.txt
 │   └── run.py
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/         # React pages
-│   │   ├── components/    # Reusable components
-│   │   ├── context/       # React context
-│   │   ├── hooks/         # Custom hooks
-│   │   └── services/      # API services
+│   │   ├── pages/          # React pages
+│   │   ├── components/     # Reusable components
+│   │   ├── context/        # React context
+│   │   ├── hooks/          # Custom hooks
+│   │   └── services/       # API services
 │   ├── package.json
 │   └── vite.config.js
+├── infrastructure/         # Docker, K8s configs
 ├── docker-compose.yml
 └── README.md
 ```
 
 ---
 
-## 🔑 API Endpoints
+## API Endpoints
 
 ### Authentication
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/auth/register` | User registration |
-| POST | `/api/auth/login` | User login |
-| POST | `/api/auth/refresh` | Refresh token |
+| POST | `/api/v1/auth/register` | User registration |
+| POST | `/api/v1/auth/login` | User login |
+| POST | `/api/v1/auth/refresh` | Refresh token |
+| POST | `/api/v1/auth/logout` | Logout |
+
+### Users
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/users/me` | Get current user |
+| PUT | `/api/v1/users/me` | Update current user |
+| GET | `/api/v1/users/` | List users (admin) |
 
 ### Accounts
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/accounts` | List user accounts |
-| POST | `/api/accounts` | Create account |
-| GET | `/api/accounts/{id}` | Get account details |
+| GET | `/api/v1/accounts` | List user accounts |
+| POST | `/api/v1/accounts` | Create account |
+| GET | `/api/v1/accounts/{id}` | Get account details |
+| GET | `/api/v1/accounts/{id}/balance` | Get account balance |
 
 ### Transactions
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/transactions/transfer` | Transfer funds |
-| GET | `/api/transactions/history` | Transaction history |
-| GET | `/api/transactions/{id}` | Transaction details |
+| POST | `/api/v1/transactions/transfer` | Transfer funds |
+| GET | `/api/v1/transactions/history` | Transaction history |
+| GET | `/api/v1/transactions/{id}` | Transaction details |
 
 ### KYC
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/kyc/submit` | Submit KYC application |
-| GET | `/api/kyc/status` | Check KYC status |
-| PATCH | `/api/kyc/approve/{id}` | Admin approval |
+| POST | `/api/v1/kyc/submit` | Submit KYC application |
+| GET | `/api/v1/kyc/status` | Check KYC status |
+| PATCH | `/api/v1/kyc/approve/{id}` | Admin approval |
+| PATCH | `/api/v1/kyc/reject/{id}` | Admin rejection |
+
+### Fraud Detection
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/fraud/alerts` | List fraud alerts |
+| PATCH | `/api/v1/fraud/alerts/{id}` | Update alert status |
+| POST | `/api/v1/fraud/retrain` | Trigger model retrain |
+
+### Analytics
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/analytics/overview` | Dashboard overview |
+| GET | `/api/v1/analytics/transactions` | Transaction analytics |
 
 ### Admin
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/admin/users` | List all users |
-| GET | `/api/admin/stats` | System statistics |
-| GET | `/api/admin/fraud-alerts` | Fraud alerts |
+| GET | `/api/v1/admin/users` | List all users |
+| GET | `/api/v1/admin/stats` | System statistics |
+| GET | `/api/v1/admin/audit-logs` | Audit logs |
+
+### Notifications
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/notifications` | List notifications |
+| PATCH | `/api/v1/notifications/{id}/read` | Mark as read |
+
+### System
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| GET | `/health/ready` | Readiness probe |
+| GET | `/health/live` | Liveness probe |
+| GET | `/metrics` | Prometheus metrics |
+| GET | `/api/v1/system/status` | System status |
 
 ---
 
-## 🔒 Environment Variables
+## Environment Variables
 
+### Backend (.env)
 ```env
-# Backend (.env)
-DATABASE_URL=sqlite:///./bank.db
-SECRET_KEY=your-secret-key-here
+# Database
+DATABASE_URL=sqlite+aiosqlite:///./bank.db
+
+# Security
+SECRET_KEY=your-super-secret-key-change-in-production
 ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=7
 
-# Frontend (.env)
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# CORS
+BACKEND_CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
+
+# Observability (optional)
+SENTRY_DSN=your-sentry-dsn
+OTLP_ENDPOINT=your-otlp-endpoint
+```
+
+### Frontend (.env)
+```env
 VITE_API_URL=http://localhost:8000
 VITE_WS_URL=ws://localhost:8000
 ```
 
 ---
 
-## 📈 Future Enhancements
+## Development
 
-- [ ] Multi-factor authentication (MFA)
-- [ ] biometric authentication
-- [ ] Payment gateway integration (Stripe, PayPal)
-- [ ] Mobile app (React Native)
-- [ ] ATM locator
-- [ ] Budgeting tools and insights
-- [ ] Investment portfolio tracking
-- [ ] Cryptocurrency support
+### Running Tests
+```bash
+# Backend
+cd backend
+pytest
+
+# Frontend
+cd frontend
+npm test
+```
+
+### Database Migrations
+```bash
+cd backend
+alembic upgrade head
+```
+
+### ML Model Training
+```bash
+cd backend
+python training/train_model.py
+```
 
 ---
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.
 
 ---
 
-## 👤 Author
+## Author
 
 **Rangaswamy Challa**
 
 ---
 
-## 🙏 Acknowledgments
-
-- FastAPI team for the amazing framework
-- React community for the component ecosystem
-- All contributors and testers
-
----
-
 <p align="center">
-  <strong>Built with ❤️ for the future of banking</strong>
+  Built with for the future of banking
 </p>
