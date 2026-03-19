@@ -1,10 +1,12 @@
 # Environment
 .env
-*.env.local
+.env.local
+*.env
 
 # Database
 *.db
 *.sqlite
+*.db-journal
 
 # Python
 __pycache__/
@@ -13,9 +15,8 @@ __pycache__/
 venv/
 .venv/
 
-# Node
-node_modules/
-frontend/node_modules/
+# Node - match node_modules at any level
+**/node_modules/
 
 # Build
 dist/
@@ -34,3 +35,13 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Terraform (if used)
+*.tfstate
+*.tfstate.*
+.infrastructure/

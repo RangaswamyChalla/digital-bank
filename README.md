@@ -1,20 +1,22 @@
 # Digital Bank Pro
 
-A modern full-stack digital banking application with FastAPI + React.
+A production-grade full-stack digital banking application with FastAPI + React, featuring fraud detection, real-time notifications, and an admin dashboard.
 
 ---
 
 ## Project Overview
 
-This is a production-ready digital banking platform featuring:
-- **User Authentication** (JWT with access/refresh tokens)
+This is a modern banking platform with:
+- **User Authentication** (JWT with access/refresh tokens, Argon2 hashing)
 - **Account Management** (Savings, Checking, Business accounts)
-- **Money Transfers** (Internal & External)
+- **Money Transfers** (Internal & External with fraud scoring)
 - **KYC Verification** (Multi-level identity verification)
 - **Fraud Detection** (ML-powered with XGBoost)
 - **Real-time Notifications** (WebSocket)
 - **Admin Dashboard** (User management, analytics, fraud alerts)
+- **Analytics** (Transaction insights, account analytics)
 - **Background Jobs** (ARQ task queue)
+- **Observability** (OpenTelemetry, Sentry, Prometheus metrics)
 
 ---
 
@@ -23,10 +25,13 @@ This is a production-ready digital banking platform featuring:
 ### Backend
 - **FastAPI** - Python async web framework
 - **SQLAlchemy 2.0** - Async ORM
-- **SQLite** - Development database (PostgreSQL-ready)
+- **PostgreSQL** - Production database (SQLite for dev)
 - **JWT** - Token authentication with Argon2 password hashing
 - **XGBoost** - ML fraud detection
 - **Redis** - Caching & pub/sub (optional)
+- **ARQ** - Background task queue
+- **OpenTelemetry** - Distributed tracing
+- **Sentry** - Error tracking
 
 ### Frontend
 - **React 18** - UI framework
@@ -40,18 +45,45 @@ This is a production-ready digital banking platform featuring:
 
 ## Quick Start
 
-### 1. Start Backend
+### Option 1: Docker Compose (Recommended)
+
+```bash
+# Start all services
+docker-compose up --build
+
+# Start with Redis (optional caching)
+docker-compose --profile with-cache up --build
+
+# Access application
+# Frontend: http://localhost:5173
+# Backend:  http://localhost:8000
+# API Docs: http://localhost:8000/docs
+```
+
+### Option 2: Manual Setup
+
+#### 1. Start Backend
 ```bash
 cd backend
 
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+
 # Install dependencies
 pip install -r requirements.txt
+
+# Initialize database
+python -c "from app.database import init_db; import asyncio; asyncio.run(init_db())"
+
+# Create admin user
+python create_admin_simple.py
 
 # Start server (runs on port 8001)
 python run.py
 ```
 
-### 2. Start Frontend
+#### 2. Start Frontend
 ```bash
 cd frontend
 
@@ -62,10 +94,22 @@ npm install
 npm run dev
 ```
 
-### 3. Access Application
-- **Frontend:** http://localhost:5173
-- **Backend API:** http://localhost:8001
-- **API Docs:** http://localhost:8001/docs
+### Option 3: Setup Script (Windows)
+```bash
+./setup.bat
+```
+
+---
+
+## Access Points
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:5173 |
+| Backend API | http://localhost:8001 |
+| API Docs (Swagger) | http://localhost:8001/docs |
+| API Docs (ReDoc) | http://localhost:8001/api/docs/redoc |
+| Prometheus Metrics | http://localhost:8001/metrics |
 
 ---
 
@@ -86,28 +130,53 @@ npm run dev
 digital-bank/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py          # FastAPI app entry
-│   │   ├── config.py        # Settings
-│   │   ├── database.py      # DB connection
-│   │   ├── models/         # SQLAlchemy models
-│   │   ├── routers/        # API endpoints
-│   │   ├── schemas/        # Pydantic schemas
-│   │   ├── services/       # Business logic
-│   │   ├── middleware/      # Custom middleware
-│   │   └── ml/            # ML fraud detection
-│   ├── alembic/           # DB migrations
-│   ├── training/           # ML training scripts
-│   └── run.py             # Server runner
+│   │   ├── main.py              # FastAPI app entry
+│   │   ├── config.py            # Settings
+│   │   ├── database.py          # DB connection
+│   │   ├── models/              # SQLAlchemy models
+│   │   ├── routers/             # API endpoints
+│   │   ├── schemas/             # Pydantic schemas
+│   │   ├── services/            # Business logic
+│   │   ├── middleware/          # Custom middleware
+│   │   │   ├── error_handling.py
+│   │   │   ├── rate_limit.py
+│   │   │   ├── per_user_rate_limit.py
+│   │   │   ├── security_headers.py
+│   │   │   ├── timeout.py
+│   │   │   └── rbac.py
+│   │   ├── ml/                  # ML fraud detection
+│   │   │   ├── models/
+│   │   │   └── features/
+│   │   ├── dependencies/        # FastAPI dependencies
+│   │   └── secrets/             # Secrets management
+│   ├── alembic/                 # DB migrations
+│   ├── training/                # ML training scripts
+│   ├── tests/                   # Test suite
+│   ├── run.py                   # Server runner
+│   └── Dockerfile
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/         # Route pages
-│   │   ├── components/     # Reusable components
-│   │   ├── context/       # React context (Auth, etc.)
-│   │   ├── hooks/         # Custom hooks
-│   │   └── services/      # API client
-│   └── vite.config.js     # Vite config
+│   │   ├── pages/              # Route pages
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── Accounts.jsx
+│   │   │   ├── Transfer.jsx
+│   │   │   ├── Transactions.jsx
+│   │   │   ├── KYC.jsx
+│   │   │   ├── Admin.jsx
+│   │   │   └── EnhancedAdmin.jsx
+│   │   ├── components/         # Reusable components
+│   │   │   ├── Layout.jsx
+│   │   │   ├── StatisticsView.jsx
+│   │   │   └── FraudAlertsView.jsx
+│   │   ├── context/            # React context (Auth)
+│   │   ├── hooks/              # Custom hooks (useWebSocket)
+│   │   └── services/           # API client
+│   ├── vite.config.js
+│   └── Dockerfile
 │
+├── docker-compose.yml
+├── setup.bat
 └── README.md
 ```
 
@@ -141,12 +210,26 @@ digital-bank/
 |--------|----------|-------------|
 | POST | `/api/v1/transactions/transfer` | Transfer funds |
 | GET | `/api/v1/transactions` | Transaction history |
+| GET | `/api/v1/transactions/history` | Detailed history |
 
 ### KYC
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/v1/kyc/submit` | Submit KYC |
 | GET | `/api/v1/kyc/status` | KYC status |
+
+### Fraud Detection
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/fraud/alerts` | Fraud alerts |
+| PUT | `/api/v1/fraud/alerts/{id}` | Update alert |
+
+### Analytics
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/analytics/overview` | System overview |
+| GET | `/api/v1/analytics/user-insights` | User insights |
+| GET | `/api/v1/analytics/accounts-insights` | Account analytics |
 
 ### Admin
 | Method | Endpoint | Description |
@@ -155,9 +238,30 @@ digital-bank/
 | GET | `/api/v1/admin/users` | List users |
 | GET | `/api/v1/admin/fraud-alerts` | Fraud alerts |
 
+### Notifications
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/notifications` | List notifications |
+| PUT | `/api/v1/notifications/{id}/read` | Mark as read |
+
+### System
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | API root |
+| GET | `/health` | Health check |
+| GET | `/health/ready` | Readiness probe |
+| GET | `/health/live` | Liveness probe |
+| GET | `/metrics` | Prometheus metrics |
+| GET | `/api/v1/system/status` | Detailed status |
+
+### WebSocket
+| Endpoint | Description |
+|----------|-------------|
+| `ws://host/ws/{user_id}` | Real-time notifications |
+
 ---
 
-## Key Features Explained
+## Key Features
 
 ### Authentication Flow
 1. User registers/logins
@@ -183,6 +287,14 @@ digital-bank/
 | 1 | Basic info | Limited transfers |
 | 2 | ID verified | Moderate limits |
 | 3 | Full verification | Unlimited |
+
+### Middleware Stack
+1. Rate Limiting (global + per-user)
+2. Error Handling
+3. Request/Response Logging
+4. CORS
+5. Security Headers
+6. Request Timeout
 
 ---
 
@@ -217,57 +329,79 @@ fraud_alerts
 ├── user_id, transaction_id
 ├── risk_score, risk_level
 └── status (open/escalated/blocked)
-```
 
----
-
-## Docker (Optional)
-
-```bash
-# Build and run
-docker-compose up --build
-
-# Backend only
-docker-compose up backend
+notifications
+├── id (UUID)
+├── user_id
+├── title, message
+└── is_read, created_at
 ```
 
 ---
 
 ## Environment Variables
 
+### Backend
 ```env
-# Backend
 DATABASE_URL=sqlite+aiosqlite:///./bank.db
 SECRET_KEY=your-secret-key
 REDIS_URL=redis://localhost:6379
+ENVIRONMENT=development
+DEBUG=true
+```
 
-# Frontend (Vite)
+### Frontend
+```env
 VITE_API_BASE_URL=http://localhost:8001
+```
+
+---
+
+## Testing
+
+```bash
+cd backend
+
+# Run all tests
+pytest tests/ -v
+
+# Run specific test file
+pytest tests/test_auth.py -v
+
+# Run with coverage
+pytest tests/ --cov=app --cov-report=html
 ```
 
 ---
 
 ## Troubleshooting
 
-**Port 8000 in use?**
+**Port 8001 in use?**
 ```bash
-# Kill processes on port
-netstat -ano | findstr :8000
+# Windows
+netstat -ano | findstr :8001
 taskkill /PID <PID> /F
+
+# Linux/Mac
+lsof -i :8001
+kill -9 <PID>
 ```
 
 **Database issues?**
 ```bash
 cd backend
-python -c "from app.database import engine, Base; from app.models import *; import asyncio; asyncio.run(engine.begin())"
+rm bank.db
+python -c "from app.database import init_db; import asyncio; asyncio.run(init_db())"
+python create_admin_simple.py
 ```
 
 **Reinstall dependencies?**
 ```bash
 # Backend
-pip install -r requirements.txt
+pip install -r requirements.txt --force-reinstall
 
 # Frontend
+cd frontend
 rm -rf node_modules package-lock.json
 npm install
 ```
@@ -276,7 +410,7 @@ npm install
 
 ## Author
 
-**Rangaswamy Challa**
+**Rangasamy Challa**
 
 ---
 
